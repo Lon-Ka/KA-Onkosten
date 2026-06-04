@@ -146,7 +146,7 @@ input:focus,select:focus,textarea:focus{outline:none;border-color:var(--a);box-s
 /* AANVRAAG CARDS (directeur/secretariaat) */
 .av-card{border:1px solid #E8E5DC;border-radius:12px;margin-bottom:.75rem;overflow:hidden;background:white}
 .av-card.gdk{border-color:var(--ab);background:var(--al)}
-.av-card.vrw{border-color:#C4D4EE;background:#E8EFF8}
+.av-card.vrw{border-color:#C4D4EE;background:#E8EFF8}.av-card.afg{border-color:#FCA5A5;background:#FEF2F2}
 .av-hdr{display:flex;align-items:center;justify-content:space-between;padding:14px;gap:10px;flex-wrap:wrap;cursor:pointer}
 .av-naam{font-size:15px;font-weight:600}
 .av-meta{font-size:12px;color:#888;margin-top:3px}
@@ -168,7 +168,7 @@ input:focus,select:focus,textarea:focus{outline:none;border-color:var(--a);box-s
 .chk.on{background:var(--a2);border-color:var(--a2)}
 .badge{display:inline-flex;align-items:center;gap:4px;padding:3px 9px;border-radius:12px;font-size:11px;font-weight:600}
 .badge.fiets{background:#E8F4EE;color:#0F4A27}.badge.ov{background:#EEF4FE;color:#1A4E8E}.badge.auto{background:#FEF3E8;color:#7A3200}
-.badge.ind{background:#FEF3E8;color:#B85000}.badge.gdk{background:var(--al);color:var(--at)}.badge.vrw{background:#EEF4FE;color:#1A4E8E}
+.badge.ind{background:#FEF3E8;color:#B85000}.badge.gdk{background:var(--al);color:var(--at)}.badge.vrw{background:#EEF4FE;color:#1A4E8E}.badge.afg{background:#FEE2E2;color:#B91C1C}
 /* OVERVIEW TABLE (secretariaat) */
 .ovtbl{width:100%;border-collapse:collapse;font-size:13px}
 .ovtbl th{text-align:left;padding:8px;border-bottom:2px solid #EEE;font-size:11px;font-weight:700;color:#999;text-transform:uppercase}
@@ -209,6 +209,20 @@ input:focus,select:focus,textarea:focus{outline:none;border-color:var(--a);box-s
 .chip-item-sub{font-size:11px;color:#888;margin-top:2px}
 .chip-loading{padding:10px 12px;font-size:12px;color:#AAA;display:flex;align-items:center;gap:8px}
 .chip-empty{padding:10px 12px;font-size:12px;color:#AAA}
+
+/* ── BEWIJZEN ──────────────────────────────────────────── */
+.bewijs-zone{border:1.5px dashed #CCC;border-radius:8px;padding:12px;margin:.75rem 0;cursor:pointer;transition:all .15s;text-align:center;color:#888;font-size:13px}
+.bewijs-zone:hover{border-color:var(--a);color:var(--at);background:var(--al)}
+.bewijs-zone.drag{border-color:var(--a);background:var(--al)}
+.bewijs-list{display:flex;flex-wrap:wrap;gap:8px;margin:.5rem 0}
+.bewijs-item{display:inline-flex;align-items:center;gap:6px;padding:4px 10px;background:#F0EDE5;border-radius:16px;font-size:12px;color:#444;max-width:200px}
+.bewijs-item i{font-size:14px;color:var(--a);flex-shrink:0}
+.bewijs-item span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.bewijs-item .bx{background:none;border:none;cursor:pointer;color:#AAA;padding:0;font-size:13px;line-height:1;flex-shrink:0}
+.bewijs-item .bx:hover{color:#B91C1C}
+.bewijs-dl{display:inline-flex;align-items:center;gap:5px;padding:3px 9px;background:#EEF4FE;border:1px solid #C8DAFB;border-radius:12px;font-size:11px;color:#1A4E8E;cursor:pointer;text-decoration:none;margin:2px}
+.bewijs-dl:hover{background:#C8DAFB}
+.uploading{opacity:.6;pointer-events:none}
 </style>
 </head>
 <body>
@@ -298,7 +312,7 @@ const CONFIG = {
 const MND=['Januari','Februari','Maart','April','Mei','Juni','Juli','Augustus','September','Oktober','November','December'];
 const MND_S=['Jan','Feb','Mrt','Apr','Mei','Jun','Jul','Aug','Sep','Okt','Nov','Dec'];
 const TYPE_LBL={fiets:'Fietsvergoeding',ov:'OV & Parkeer',auto:'Eigen voertuig'};
-const STATUS_LBL={ingediend:'Ingediend',goedgekeurd:'Goedgekeurd',verwerkt:'Verwerkt'};
+const STATUS_LBL={ingediend:'Ingediend',goedgekeurd:'Goedgekeurd',afgekeurd:'Afgekeurd',verwerkt:'Verwerkt'};
 
 const FEESTDAGEN=new Set(['2025-01-01','2025-04-21','2025-05-01','2025-05-29','2025-06-09','2025-07-11','2025-07-21','2025-08-15','2025-11-01','2025-11-11','2025-12-25','2026-01-01','2026-04-06','2026-05-01','2026-05-14','2026-05-25','2026-07-11','2026-07-21','2026-08-15','2026-11-01','2026-11-11','2026-12-25','2027-01-01','2027-03-29','2027-05-01','2027-05-06','2027-05-17','2027-07-11','2027-07-21','2027-08-15','2027-11-01','2027-11-11','2027-12-25','2028-01-01','2028-04-17','2028-05-01','2028-05-25','2028-06-05','2028-07-11','2028-07-21','2028-08-15','2028-11-01','2028-11-11','2028-12-25','2029-01-01','2029-04-02','2029-05-01','2029-05-10','2029-05-21','2029-07-11','2029-07-21','2029-08-15','2029-11-01','2029-11-11','2029-12-25','2030-01-01','2030-04-22','2030-05-01','2030-05-30','2030-06-10','2030-07-11','2030-07-21','2030-08-15','2030-11-01','2030-11-11','2030-12-25','2031-01-01','2031-04-14','2031-05-01','2031-05-22','2031-06-02','2031-07-11','2031-07-21','2031-08-15','2031-11-01','2031-11-11','2031-12-25']);
 const VAKDAGEN=(()=>{const r=[['2025-10-27','2025-11-02'],['2026-10-26','2026-11-01'],['2027-10-25','2027-10-31'],['2028-10-30','2028-11-05'],['2029-10-28','2029-11-03'],['2030-10-28','2030-11-03'],['2031-10-27','2031-11-02'],['2025-12-22','2026-01-04'],['2026-12-21','2027-01-03'],['2027-12-27','2028-01-09'],['2028-12-25','2029-01-06'],['2029-12-23','2030-01-05'],['2030-12-22','2031-01-04'],['2026-02-16','2026-02-22'],['2027-02-08','2027-02-14'],['2028-02-28','2028-03-05'],['2029-02-11','2029-02-17'],['2030-03-04','2030-03-10'],['2031-02-17','2031-02-23'],['2026-03-30','2026-04-12'],['2027-03-22','2027-04-04'],['2028-04-03','2028-04-16'],['2029-04-07','2029-04-20'],['2030-04-07','2030-04-20'],['2031-04-07','2031-04-20'],['2026-05-14','2026-05-15'],['2027-05-06','2027-05-07'],['2028-05-25','2028-05-26'],['2029-05-10','2029-05-11'],['2030-05-30','2030-05-31'],['2031-05-22','2031-05-23'],['2025-07-01','2025-08-31'],['2026-07-01','2026-08-31'],['2027-07-01','2027-08-31'],['2028-07-01','2028-08-31'],['2029-07-01','2029-08-31'],['2030-07-01','2030-08-31'],['2031-07-01','2031-08-31']];const s=new Set();r.forEach(([a,b])=>{let d=new Date(a+'T00:00:00');const e=new Date(b+'T00:00:00');while(d<=e){s.add(d.toISOString().slice(0,10));d.setDate(d.getDate()+1);}});return s;})();
@@ -947,7 +961,7 @@ async function indienFiets(){
   const btn=document.getElementById('btnIndienF');
   if(btn){btn.disabled=true;btn.innerHTML='<i class="ti ti-loader" style="animation:spin .8s linear infinite"></i>Indienen…';}
   try{
-    await createItem(CONFIG.lijstIds.aanvragen,{
+    const result = await createItem(CONFIG.lijstIds.aanvragen,{
       Title:nm,AanvraagType:'fiets',School:S.trajecten.map(t=>t.school).join(', '),
       Maand:S.calMo+1,Jaar:S.calYr,TotalEur:parseFloat(totalEur.toFixed(2)),
       AanvraagStatus:'ingediend',DataJson:dataJson,
@@ -1033,6 +1047,16 @@ function renderOvInvoer(){
       <button class="btn p" onclick="renderOvFormulier(2)"><i class="ti ti-arrow-right"></i>Overzicht</button>
     </div>`;
   addOvRow('park');addOvRow('ov');
+  // Voeg bewijszone toe
+  const bzContainer = document.querySelector('#modContent .card');
+  if(bzContainer){
+    const bz = document.createElement('div');
+    bz.style.marginTop='1rem';
+    bz.innerHTML = '<div style="font-size:12px;font-weight:700;color:var(--at);margin-bottom:6px">📎 Bewijsstukken (optioneel — tickets, bonnetjes, fotos)</div>' + bewijsZoneHtml('ov-pending');
+    const lastChild = bzContainer.querySelector('.add-btn:last-of-type');
+    if(lastChild) lastChild.after(bz);
+    else bzContainer.appendChild(bz);
+  }
 }
 
 function addOvRow(type){
@@ -1106,11 +1130,16 @@ async function indienOv(){
   const btn=document.getElementById('btnIndienO');
   if(btn){btn.disabled=true;btn.innerHTML='<i class="ti ti-loader" style="animation:spin .8s linear infinite"></i>Indienen…';}
   try{
-    await createItem(CONFIG.lijstIds.aanvragen,{
+    const result = await createItem(CONFIG.lijstIds.aanvragen,{
       Title:nm,AanvraagType:'ov',School:S.user.school||'',Maand:m+1,Jaar:y,
       TotalEur:parseFloat(tot.toFixed(2)),AanvraagStatus:'ingediend',DataJson:dataJson,
       Stamboek:f.st||'',IBAN:f.ib||'',Rijksreg:f.rr||'',Email:S.user.email,
     });
+    // Upload bewijzen indien aanwezig
+    if(pendingBewijzen['ov-pending']&&pendingBewijzen['ov-pending'].length){
+      notify('Bewijzen uploaden...');
+      await uploadPendingBewijzen(result.id,'ov-pending');
+    }
     notify('Aanvraag ingediend ✓');
     S.oAccepted=false;S.oAcceptedDate='';
     renderLkFormulier();
@@ -1269,7 +1298,7 @@ async function indienAuto(){
   const btn=document.getElementById('btnIndienA');
   if(btn){btn.disabled=true;btn.innerHTML='<i class="ti ti-loader" style="animation:spin .8s linear infinite"></i>Indienen…';}
   try{
-    await createItem(CONFIG.lijstIds.aanvragen,{
+    const result = await createItem(CONFIG.lijstIds.aanvragen,{
       Title:nm,AanvraagType:'auto',School:S.user.school||'',
       Maand:(S.aMaand||0)+1,Jaar:S.aJaar||new Date().getFullYear(),
       TotalEur:parseFloat(grandEur.toFixed(2)),AanvraagStatus:'ingediend',DataJson:dataJson,
@@ -1296,8 +1325,8 @@ function avCardHtml(a,ctx){
   const type=a.AanvraagType||'fiets';
   const status=a.AanvraagStatus||'ingediend';
   const maand=MND[(a.Maand-1)||0]+' '+(a.Jaar||'');
-  const statusCls={ingediend:'ind',goedgekeurd:'gdk',verwerkt:'vrw'}[status]||'ind';
-  const cardCls=status==='goedgekeurd'?'gdk':status==='verwerkt'?'vrw':'';
+  const statusCls={ingediend:'ind',goedgekeurd:'gdk',afgekeurd:'afg',verwerkt:'vrw'}[status]||'ind';
+  const cardCls=status==='goedgekeurd'?'gdk':status==='verwerkt'?'vrw':status==='afgekeurd'?'afg':'';
   let bodyHtml='';
   try{
     const d=JSON.parse(a.DataJson||'{}');
@@ -1320,6 +1349,7 @@ function avCardHtml(a,ctx){
     }
   }catch(e){}
 
+  const bewijzenSection=(type==='ov')?`<div style="margin-top:8px"><div style="font-size:11px;font-weight:700;color:#888;text-transform:uppercase;margin-bottom:4px">📎 Bewijzen</div><div class="bewijs-list" id="bwz-${a.id}"><span style="font-size:11px;color:#AAA;cursor:pointer" onclick="renderBewijzenInCard('${a.id}',document.getElementById('bwz-${a.id}'))">Laden...</span></div></div>`:'';
   const dirInfo=status!=='ingediend'?`<div style="font-size:12px;color:#555;margin-top:8px;padding:8px;background:#F8F7F4;border-radius:6px"><i class="ti ti-shield-check" style="font-size:13px;color:var(--a2);vertical-align:-2px"></i> Goedgekeurd door ${a.DirNaam||'directeur'} ${a.DirDatum?'op '+new Date(a.DirDatum).toLocaleDateString('nl-BE'):''}</div>`:''
   const approveBtn=ctx==='dir'&&status==='ingediend'?`<div class="check-row${S.pendingApprove&&S.pendingApprove[a.id]?' checked':''}" onclick="toggleDirApprove('${a.id}')"><div class="chk${S.pendingApprove&&S.pendingApprove[a.id]?' on':''}">${S.pendingApprove&&S.pendingApprove[a.id]?'<i class="ti ti-check" style="color:white;font-size:14px"></i>':''}</div><div><div style="font-size:13px;color:${S.pendingApprove&&S.pendingApprove[a.id]?'var(--a2)':'#444'};font-weight:${S.pendingApprove&&S.pendingApprove[a.id]?600:400}">Ik keur deze aanvraag goed</div></div></div>
     <div class="br" style="margin-top:.75rem"><button class="btn pu" onclick="confirmApprove('${a.id}')"><i class="ti ti-shield-check"></i>Goedkeuren &amp; opslaan</button></div>`:''
@@ -1337,14 +1367,22 @@ function avCardHtml(a,ctx){
       </div>
     </div>
     <div class="av-body" id="avb-${a.id}">
-      ${bodyHtml}${dirInfo}${approveBtn}${secBtn}
+      ${bodyHtml}${bewijzenSection||''}${dirInfo}${approveBtn}${secBtn}
     </div>
   </div>`;
 }
 
 function toggleAvBody(id){
   const el=document.getElementById('avb-'+id);
-  if(el)el.classList.toggle('on');
+  if(el){
+    el.classList.toggle('on');
+    // Laad bewijzen automatisch bij openen van OV-kaart
+    if(el.classList.contains('on')){
+      const bwz=document.getElementById('bwz-'+id);
+      if(bwz&&bwz.innerHTML.includes('Laden...'))
+        renderBewijzenInCard(id,bwz);
+    }
+  }
 }
 
 // ═══════════════════════════════════════════════════════════════════
@@ -1373,6 +1411,20 @@ function toggleDirApprove(id){
   }
 }
 
+async function confirmAfkeuren(id){
+  const a=S.aanvragen.find(x=>x.id===id);if(!a)return;
+  if(!confirm(`Aanvraag van ${a.Title||'leerkracht'} afkeuren? Dit kan niet ongedaan worden.`))return;
+  try{
+    await updateItem(CONFIG.lijstIds.aanvragen,id,{
+      AanvraagStatus:'afgekeurd',
+      DirNaam:S.user.naam,
+      DirDatum:new Date().toISOString(),
+    });
+    notify(`Aanvraag van ${a.Title} afgekeurd`);
+    await loadAanvragen();
+    renderDirTeBeoordelen();
+  }catch(e){warnMsg('Afkeuren mislukt: '+e.message);}
+}
 async function confirmApprove(id){
   const a=S.aanvragen.find(x=>x.id===id);if(!a)return;
   if(!S.pendingApprove||!S.pendingApprove[id]){warnMsg('Vink eerst de goedkeuring aan.');return;}
@@ -1657,6 +1709,88 @@ async function fetchAddresses(q, wrap, inp, onSelect) {
   }
 }
 
+
+// ── BEWIJZEN (SharePoint Document Library) ───────────────────────
+async function uploadBewijs(itemId, file){
+  const token = await getToken();
+  const name = encodeURIComponent(file.name.replace(/[#%*:<>?/\\|]/g,'_'));
+  const url = `https://graph.microsoft.com/v1.0/sites/${CONFIG.siteId}/drive/root:/Bewijzen/${itemId}/${name}:/content`;
+  const r = await fetch(url, {
+    method:'PUT',
+    headers:{'Authorization':'Bearer '+token, 'Content-Type': file.type||'application/octet-stream'},
+    body: file,
+  });
+  if(!r.ok){ const t=await r.text(); throw new Error(`Upload ${r.status}: ${t.slice(0,200)}`); }
+  return r.json();
+}
+
+async function loadBewijzen(itemId){
+  try{
+    const token = await getToken();
+    const url = `https://graph.microsoft.com/v1.0/sites/${CONFIG.siteId}/drive/root:/Bewijzen/${itemId}:/children?$select=name,@microsoft.graph.downloadUrl,webUrl`;
+    const r = await fetch(url, {headers:{'Authorization':'Bearer '+token}});
+    if(r.status===404) return [];
+    if(!r.ok) return [];
+    const j = await r.json();
+    return j.value||[];
+  }catch(e){ return []; }
+}
+
+function bewijsZoneHtml(pendingId){
+  return `<div class="bewijs-zone" id="bz-${pendingId}" onclick="document.getElementById('bi-${pendingId}').click()" ondragover="event.preventDefault();this.classList.add('drag')" ondragleave="this.classList.remove('drag')" ondrop="handleBewijsDrop(event,'${pendingId}')">
+    <i class="ti ti-upload" style="font-size:18px;display:block;margin-bottom:4px"></i>
+    Klik of sleep bewijsstukken hier (foto's, PDF, tickets)
+  </div>
+  <input type="file" id="bi-${pendingId}" multiple accept="image/*,.pdf" style="display:none" onchange="handleBewijsFiles(this,'${pendingId}')">
+  <div class="bewijs-list" id="bl-${pendingId}"></div>`;
+}
+
+const pendingBewijzen = {}; // pendingId → [{file, name}]
+
+function handleBewijsDrop(e, pendingId){
+  e.preventDefault();
+  document.getElementById('bz-'+pendingId)?.classList.remove('drag');
+  addPendingBewijzen(pendingId, [...e.dataTransfer.files]);
+}
+function handleBewijsFiles(inp, pendingId){
+  addPendingBewijzen(pendingId, [...inp.files]);
+  inp.value='';
+}
+function addPendingBewijzen(pendingId, files){
+  if(!pendingBewijzen[pendingId]) pendingBewijzen[pendingId]=[];
+  files.forEach(f => pendingBewijzen[pendingId].push(f));
+  renderPendingBewijzen(pendingId);
+}
+function removePendingBewijs(pendingId, idx){
+  if(pendingBewijzen[pendingId]) pendingBewijzen[pendingId].splice(idx,1);
+  renderPendingBewijzen(pendingId);
+}
+function renderPendingBewijzen(pendingId){
+  const el = document.getElementById('bl-'+pendingId); if(!el) return;
+  const files = pendingBewijzen[pendingId]||[];
+  el.innerHTML = files.map((f,i)=>`<div class="bewijs-item"><i class="ti ti-${f.type.startsWith('image')?'photo':'file-text'}"></i><span title="${f.name}">${f.name}</span><button class="bx" onclick="removePendingBewijs('${pendingId}',${i})" title="Verwijderen">✕</button></div>`).join('');
+}
+
+async function uploadPendingBewijzen(itemId, pendingId){
+  const files = pendingBewijzen[pendingId]||[];
+  if(!files.length) return;
+  for(const f of files){
+    try{ await uploadBewijs(itemId, f); }
+    catch(e){ console.warn('Upload mislukt:', f.name, e.message); }
+  }
+  delete pendingBewijzen[pendingId];
+}
+
+async function renderBewijzenInCard(itemId, container){
+  container.innerHTML = '<span style="font-size:11px;color:#AAA">Bewijzen laden...</span>';
+  const files = await loadBewijzen(itemId);
+  if(!files.length){ container.innerHTML='<span style="font-size:11px;color:#AAA">Geen bewijzen</span>'; return; }
+  container.innerHTML = files.map(f=>
+    `<a class="bewijs-dl" href="${f['@microsoft.graph.downloadUrl']||f.webUrl}" target="_blank" rel="noopener">
+      <i class="ti ti-download" style="font-size:12px"></i>${f.name}
+    </a>`
+  ).join('');
+}
 </script>
 </body>
 </html>
