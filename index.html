@@ -224,6 +224,39 @@ input:focus,select:focus,textarea:focus{outline:none;border-color:var(--a);box-s
 .bewijs-dl:hover{background:#C8DAFB}
 .uploading{opacity:.6;pointer-events:none}
 </style>
+
+<script>
+// Verplicht gebruik via MijnDigiKAntoor portaal
+if (window.self === window.top) {
+    document.addEventListener('DOMContentLoaded', function() {
+        document.body.innerHTML = `
+            <div style="display:flex; flex-direction:column; align-items:center;
+                        justify-content:center; height:100vh; font-family:'Segoe UI',sans-serif;
+                        background:#F5F7FA; text-align:center; padding:20px;">
+                <svg width="64" height="64" viewBox="0 0 64 64" fill="none" style="margin-bottom:24px;">
+                    <rect width="64" height="64" rx="16" fill="#0F1D2E"/>
+                    <rect x="12" y="12" width="16" height="16" rx="4" fill="#1A6BB5"/>
+                    <rect x="36" y="12" width="16" height="16" rx="4" fill="#2E8B57"/>
+                    <rect x="12" y="36" width="16" height="16" rx="4" fill="#C05A1A"/>
+                    <rect x="36" y="36" width="16" height="16" rx="4" fill="#6B7A8D"/>
+                </svg>
+                <h2 style="margin:0 0 8px; font-size:1.4rem; color:#1C2B3A;">
+                    Toegang via portaal vereist
+                </h2>
+                <p style="margin:0 0 28px; color:#6B7A8D; max-width:360px; line-height:1.5;">
+                    Deze applicatie is enkel beschikbaar via het MijnDigiKAntoor portaal.
+                </p>
+                <a href="https://lon-ka.github.io/KA-portaal/"
+                   style="display:inline-flex; align-items:center; gap:10px;
+                          padding:14px 28px; background:#0F1D2E; color:#fff;
+                          text-decoration:none; border-radius:10px; font-weight:600;
+                          font-size:.95rem;">
+                    Naar MijnDigiKAntoor
+                </a>
+            </div>`;
+    });
+}
+</script>
 </head>
 <body>
 
@@ -354,11 +387,19 @@ async function getToken(){
     return r.accessToken;
   }catch(e){
     // Silent failed — redirect to Microsoft for new token
+    if(window.self !== window.top){
+      showError('Sessie verlopen. Sluit dit venster en meld opnieuw aan via het portaal.');
+      return null;
+    }
     await msalApp.acquireTokenRedirect({scopes:SCOPES,account:accounts[0]});
     return null;
   }
 }
 async function login(){
+  if(window.self !== window.top){
+    showError('Sessie verlopen. Sluit dit venster en meld opnieuw aan via het portaal.');
+    return;
+  }
   try{
     await msalApp.loginRedirect({scopes:SCOPES});
   }catch(e){showError('Aanmelden mislukt: '+e.message);}
@@ -513,7 +554,14 @@ async function boot(){
     await msalApp.initialize();
     const r=await msalApp.handleRedirectPromise();
     const accounts=msalApp.getAllAccounts();
-    if(!accounts.length){showView('login');return;}
+    if(!accounts.length){
+      if(window.self !== window.top){
+        showError('Geen actieve sessie gevonden. Meld aan via het MijnDigiKAntoor portaal en open de app opnieuw.');
+        return;
+      }
+      showView('login');
+      return;
+    }
 
     // Huidige gebruiker ophalen
     const token=await getToken();
