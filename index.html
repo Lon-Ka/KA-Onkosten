@@ -593,24 +593,6 @@ async function boot(){
   try{
     await msalApp.initialize();
     const r=await msalApp.handleRedirectPromise();
-    if(window._portalToken){
-      const fakeAcc = msalApp.getAllAccounts()[0] || { username: window._portalEmail || '' };
-      // Sla email op en start app
-      window._appBooted = true;
-      // Laad app direct met portal token
-      const me = await fetch('https://graph.microsoft.com/v1.0/me', { headers: { Authorization: 'Bearer ' + window._portalToken } });
-      const meJson = await me.json();
-      const email = (meJson.mail || meJson.userPrincipalName || window._portalEmail || '').toLowerCase();
-      // Vervolg boot met email
-      const alleGebruikers = await getListItems(CONFIG.lijstIds.gebruikers);
-      const gebruikers = alleGebruikers.filter(u => (u.Title||'').toLowerCase() === email);
-      if(!gebruikers.length) { showError(`Uw account (${email}) is niet geconfigureerd.`); return; }
-      const rol = gebruikers[0].Rol || 'leerkracht';
-      const school = gebruikers[0].School || CONFIG.scholen[0];
-      startApp(email, rol, school, fakeAcc);
-      return;
-    }
-
     const accounts=msalApp.getAllAccounts();
     if(!accounts.length){
       if(window.self !== window.top){
