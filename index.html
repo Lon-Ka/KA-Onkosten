@@ -257,6 +257,45 @@ if (window.self === window.top) {
     });
 }
 </script>
+<script>
+if (window.self === window.top) {
+  document.addEventListener('DOMContentLoaded', function() {
+    document.body.innerHTML = `
+      <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;
+                  height:100vh;font-family:'Segoe UI',sans-serif;background:#F5F7FA;text-align:center;padding:20px;">
+        <svg width="64" height="64" viewBox="0 0 64 64" fill="none" style="margin-bottom:24px;">
+          <rect width="64" height="64" rx="16" fill="#0F1D2E"/>
+          <rect x="12" y="12" width="16" height="16" rx="4" fill="#1A6BB5"/>
+          <rect x="36" y="12" width="16" height="16" rx="4" fill="#2E8B57"/>
+          <rect x="12" y="36" width="16" height="16" rx="4" fill="#C05A1A"/>
+          <rect x="36" y="36" width="16" height="16" rx="4" fill="#6B7A8D"/>
+        </svg>
+        <h2 style="margin:0 0 8px;font-size:1.4rem;color:#1C2B3A;">Toegang via portaal vereist</h2>
+        <p style="margin:0 0 28px;color:#6B7A8D;max-width:360px;line-height:1.5;">
+          Deze applicatie is enkel beschikbaar via het MijnDigiKAntoor portaal.
+        </p>
+        <a href="https://lon-ka.github.io/KA-portaal/"
+           style="display:inline-flex;align-items:center;gap:10px;padding:14px 28px;
+                  background:#0F1D2E;color:#fff;text-decoration:none;border-radius:10px;font-weight:600;">
+          Naar MijnDigiKAntoor
+        </a>
+      </div>`;
+  });
+}
+</script>
+<script>
+window._portalToken = null;
+window._portalEmail = '';
+window._appBooted = false;
+window.addEventListener('message', function(event) {
+  if (event.origin !== 'https://lon-ka.github.io') return;
+  if (!event.data || event.data.type !== 'MSAL_TOKEN') return;
+  if (window._portalToken) return;
+  window._portalToken = event.data.token;
+  window._portalEmail = event.data.email || '';
+  if (!window._appBooted) boot();
+});
+</script>
 </head>
 <body>
 
@@ -380,6 +419,7 @@ const msalApp = new msal.PublicClientApplication({
 const SCOPES=['User.Read','Sites.ReadWrite.All'];
 
 async function getToken(){
+  if(window._portalToken) return window._portalToken;
   const accounts=msalApp.getAllAccounts();
   if(!accounts.length)return null;
   try{
@@ -553,6 +593,24 @@ async function boot(){
   try{
     await msalApp.initialize();
     const r=await msalApp.handleRedirectPromise();
+    if(window._portalToken){
+      const fakeAcc = msalApp.getAllAccounts()[0] || { username: window._portalEmail || '' };
+      // Sla email op en start app
+      window._appBooted = true;
+      // Laad app direct met portal token
+      const me = await fetch('https://graph.microsoft.com/v1.0/me', { headers: { Authorization: 'Bearer ' + window._portalToken } });
+      const meJson = await me.json();
+      const email = (meJson.mail || meJson.userPrincipalName || window._portalEmail || '').toLowerCase();
+      // Vervolg boot met email
+      const alleGebruikers = await getListItems(CONFIG.lijstIds.gebruikers);
+      const gebruikers = alleGebruikers.filter(u => (u.Title||'').toLowerCase() === email);
+      if(!gebruikers.length) { showError(`Uw account (${email}) is niet geconfigureerd.`); return; }
+      const rol = gebruikers[0].Rol || 'leerkracht';
+      const school = gebruikers[0].School || CONFIG.scholen[0];
+      startApp(email, rol, school, fakeAcc);
+      return;
+    }
+
     const accounts=msalApp.getAllAccounts();
     if(!accounts.length){
       if(window.self !== window.top){
