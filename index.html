@@ -666,7 +666,11 @@ async function loadAanvragen(){
   if(S.user.rol==='leerkracht'){
     S.aanvragen=alle.filter(a=>(a.Email||'').toLowerCase()===S.user.email);
   } else if(S.user.rol==='directeur'){
-    S.aanvragen=alle.filter(a=>a.AanvraagStatus==='ingediend');
+    // Eigen aanvragen (alle statussen) + alle ingediende aanvragen ter beoordeling
+    S.aanvragen=alle.filter(a=>
+      (a.Email||'').toLowerCase()===S.user.email ||
+      a.AanvraagStatus==='ingediend'
+    );
   } else {
     S.aanvragen=alle;
   }
@@ -701,6 +705,8 @@ const NAV={
     {icon:'ti-list',label:'Mijn aanvragen'},
   ],
   directeur:[
+    {icon:'ti-pencil',label:'Aanvraag indienen'},
+    {icon:'ti-list',label:'Mijn aanvragen'},
     {icon:'ti-clock',label:'Te beoordelen'},
     {icon:'ti-shield-check',label:'Goedgekeurd'},
   ],
@@ -729,7 +735,9 @@ function renderTab(){
     if(S.tabIdx===0)renderLkFormulier();
     else renderLkAanvragen();
   } else if(r==='directeur'){
-    if(S.tabIdx===0)renderDirTeBeoordelen();
+    if(S.tabIdx===0)renderLkFormulier();
+    else if(S.tabIdx===1)renderLkAanvragen();
+    else if(S.tabIdx===2)renderDirTeBeoordelen();
     else renderDirGoedgekeurd();
   } else {
     if(S.tabIdx===0)renderSecAanvragen();
