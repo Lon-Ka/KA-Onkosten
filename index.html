@@ -1644,6 +1644,18 @@ function fietsStats(a){
   }catch(e){return null;}
 }
 
+// Telt ritten, totale km en carpoolritten op voor Eigen voertuig-aanvragen
+function autoStats(a){
+  if(a.AanvraagType!=='auto')return null;
+  try{
+    const d=JSON.parse(a.DataJson||'{}');
+    if(!d.ritten||!d.ritten.length)return null;
+    const km=d.ritten.reduce((s,r)=>s+(parseFloat(r.km)||0),0);
+    const cpCount=d.ritten.filter(r=>r.carpool).length;
+    return{ritten:d.ritten.length,km,cpCount};
+  }catch(e){return null;}
+}
+
 function renderSecOverzicht(){
   const filtered=S.aanvragen.filter(a=>{
     if(a.AanvraagStatus==='ingediend')return false;
@@ -1665,7 +1677,9 @@ function renderSecOverzicht(){
       ...list.sort((a,b)=>(a.Title||'').localeCompare(b.Title||'')).map(a=>{
         const fs=fietsStats(a);
         const fietsLine=fs?`<br><span style="font-size:11px;color:#555">${fs.dagen} fietsdag${fs.dagen!==1?'en':''} · ${fs.km.toFixed(1)} km</span>`:'';
-        return`<tr><td>${a.Title||'—'}</td><td>${a.Stamboek||'—'}</td><td style="font-size:12px;color:#888">${MND[(a.Maand-1)||0]} ${a.Jaar||''} · ${a.School||'—'}<br><span style="font-size:11px">Dir: ${a.DirNaam||'—'}</span><br><span style="font-size:11px;color:#555">IBAN: ${a.IBAN||'—'}</span>${fietsLine}</td><td class="r" style="font-weight:600;color:var(--a3)">${fmtEur(a.TotalEur)}</td></tr>`;
+        const as=autoStats(a);
+        const autoLine=as?`<br><span style="font-size:11px;color:#555">${as.ritten} rit${as.ritten!==1?'ten':''} · ${as.km.toFixed(1)} km${as.cpCount?` · 🤝 carpool: ${as.cpCount}/${as.ritten}`:' · geen carpool'}</span>`:'';
+        return`<tr><td>${a.Title||'—'}</td><td>${a.Stamboek||'—'}</td><td style="font-size:12px;color:#888">${MND[(a.Maand-1)||0]} ${a.Jaar||''} · ${a.School||'—'}<br><span style="font-size:11px">Dir: ${a.DirNaam||'—'}</span><br><span style="font-size:11px;color:#555">IBAN: ${a.IBAN||'—'}</span>${fietsLine}${autoLine}</td><td class="r" style="font-weight:600;color:var(--a3)">${fmtEur(a.TotalEur)}</td></tr>`;
       })
     ];
   });
@@ -1739,7 +1753,9 @@ async function downloadOverviewPdf(){
     list.forEach(a=>{
       const fs=fietsStats(a);
       const fietsLine=fs?` · ${fs.dagen} fietsdag${fs.dagen!==1?'en':''} · ${fs.km.toFixed(1)} km`:'';
-      rows+=`<tr><td style="padding:7px 8px;border-bottom:1px solid #EEE">${a.Title||'—'}</td><td style="padding:7px 8px;border-bottom:1px solid #EEE;color:#888">${a.Stamboek||'—'}</td><td style="padding:7px 8px;border-bottom:1px solid #EEE;font-size:12px;color:#888">${MND[(a.Maand-1)||0]} ${a.Jaar||''} · Dir: ${a.DirNaam||'—'} · IBAN: ${a.IBAN||'—'}${fietsLine}</td><td style="text-align:right;padding:7px 8px;border-bottom:1px solid #EEE;font-weight:600">${fmtEur(a.TotalEur)}</td></tr>`;
+      const as=autoStats(a);
+      const autoLine=as?` · ${as.ritten} rit${as.ritten!==1?'ten':''} · ${as.km.toFixed(1)} km${as.cpCount?` · carpool: ${as.cpCount}/${as.ritten}`:' · geen carpool'}`:'';
+      rows+=`<tr><td style="padding:7px 8px;border-bottom:1px solid #EEE">${a.Title||'—'}</td><td style="padding:7px 8px;border-bottom:1px solid #EEE;color:#888">${a.Stamboek||'—'}</td><td style="padding:7px 8px;border-bottom:1px solid #EEE;font-size:12px;color:#888">${MND[(a.Maand-1)||0]} ${a.Jaar||''} · Dir: ${a.DirNaam||'—'} · IBAN: ${a.IBAN||'—'}${fietsLine}${autoLine}</td><td style="text-align:right;padding:7px 8px;border-bottom:1px solid #EEE;font-weight:600">${fmtEur(a.TotalEur)}</td></tr>`;
     });
   });
   const htmlStr=`<div style="font-family:Arial,sans-serif;font-size:13px;color:#1A1A18;max-width:700px;padding:10px">
