@@ -550,8 +550,9 @@ async function loadProfiel(email){
 
 // ── Fietskalender opslaan in SharePoint ───────────────────────────────────
 async function saveFietskalender(yr, mo) {
-  const token = await getToken(); if (!token || !S.user) return;
-  const email = S.user.email;
+  const token = await getToken(); if (!token) return;
+  const email = (S.user && S.user.email) || window._portalEmail || '';
+  if (!email) return;
   const title = `${email}-${yr}-${String(mo+1).padStart(2,'0')}`;
 
   // Serialiseer biked en leave voor deze maand
@@ -587,8 +588,9 @@ async function saveFietskalender(yr, mo) {
 }
 
 async function loadFietskalender(yr, mo) {
-  const token = await getToken(); if (!token || !S.user) return;
-  const email = S.user.email;
+  const token = await getToken(); if (!token) return;
+  const email = (S.user && S.user.email) || window._portalEmail || '';
+  if (!email) return;
   const title = `${email}-${yr}-${String(mo+1).padStart(2,'0')}`;
   const base = `https://graph.microsoft.com/v1.0/sites/${CONFIG.siteId}/lists/${CONFIG.lijstIds.fietskalender}/items`;
   const headers = { Authorization: 'Bearer ' + token };
@@ -1054,6 +1056,7 @@ function toggleAll(){
   const wd=getWorkdays();const allOn=wd.every(d=>S.biked[k].has(d));
   if(allOn){wd.forEach(d=>S.biked[k].delete(d));}
   else{let sk=0;wd.forEach(d=>{const c=S.trajecten.filter(t=>t.id!==S.curTrajId).some(t=>{const ok=mk(t.id,S.calYr,S.calMo);return S.biked[ok]&&S.biked[ok].has(d);});if(c)sk++;else S.biked[k].add(d);});if(sk>0)warnMsg(`${sk} dag(en) overgeslagen (al bij ander traject).`);}
+  saveFietskalender(S.calYr, S.calMo);
   buildCal();
 }
 
