@@ -312,17 +312,13 @@ if (window.self === window.top) {
 window._portalToken = null;
 window._portalEmail = '';
 window._appBooted = false;
-document.addEventListener('DOMContentLoaded', function() {
-  window.addEventListener('message', function(event) {
-    if (event.origin !== 'https://lon-ka.github.io') return;
-    if (!event.data) return;
-    if (event.data.type === 'OPEN_HELP') { if(typeof openHelp==='function') openHelp(); return; }
-    if (event.data.type !== 'MSAL_TOKEN') return;
-    if (window._portalToken) return;
-    window._portalToken = event.data.token;
-    window._portalEmail = event.data.email || '';
-    if (!window._appBooted && typeof boot==='function') boot();
-  });
+window.addEventListener('message', function(event) {
+  if (event.origin !== 'https://lon-ka.github.io') return;
+  if (!event.data || event.data.type !== 'MSAL_TOKEN') return;
+  if (window._portalToken) return;
+  window._portalToken = event.data.token;
+  window._portalEmail = event.data.email || '';
+  if (!window._appBooted) boot();
 });
 </script>
 </head>
@@ -397,8 +393,9 @@ const CONFIG = {
   tenantId:    '165074eb-b8b7-49e8-a9b4-54cac7939ed2',
   siteId:      'gebaskabe.sharepoint.com,84323b19-c1b0-40ac-a0d6-2c24776fba4b,e0158228-22a6-4225-87dc-fe7d619ae7e4',
   lijstIds: {
-    profielen:  '41d4c1e5-f3c9-4bfc-bbd1-f5788862a08f',
-    aanvragen:  'ce88d35f-fb30-41cc-8e95-5143bcffc79a',
+    profielen:     '41d4c1e5-f3c9-4bfc-bbd1-f5788862a08f',
+    aanvragen:     'ce88d35f-fb30-41cc-8e95-5143bcffc79a',
+    fietskalender: 'b88a19557-bf37-4e74-8775-2d6bb7fd3323',
     gebruikers: 'e3ff98a4-268b-4427-80db-aa5cbb28ce57',
   },
   redirectUri:  'https://lon-ka.github.io/KA-Onkosten/',
@@ -539,6 +536,8 @@ async function loadProfiel(email){
           const traj=JSON.parse(item.Trajecten);
           if(Array.isArray(traj)&&traj.length){
             S.trajecten=traj;
+  // Laad fietskalender voor huidige maand
+  await loadFietskalender(S.calYr, S.calMo);
             S.curTrajId=traj[0].id;
             S.trajCounter=traj.reduce((mx,t)=>Math.max(mx,parseInt(t.id.replace('t',''))||0),0)+1;
           }
@@ -548,6 +547,71 @@ async function loadProfiel(email){
   }catch(e){ console.warn('Profiel laden mislukt:', e.message); }
 }
 
+
+// ── Fietskalender opslaan in SharePoint ───────────────────────────────────
+async function saveFietskalender(yr, mo) {
+  const token = await getToken(); if (!token || !S.user) return;
+  const email = S.user.email;
+  const title = `${email}-${yr}-${String(mo+1).padStart(2,'0')}`;
+
+  // Serialiseer biked en leave voor deze maand
+  const bikedData = {};
+  for (const t of S.trajecten) {
+    const k = mk(t.id, yr, mo);
+    bikedData[t.id] = S.biked[k] ? [...S.biked[k]] : [];
+  }
+  const leaveData = S.leave[lk(yr, mo)] ? [...S.leave[lk(yr, mo)]] : [];
+  const calData = JSON.stringify({ biked: bikedData, leave: leaveData });
+
+  const base = `https://graph.microsoft.com/v1.0/sites/${CONFIG.siteId}/lists/${CONFIG.lijstIds.fietskalender}/items`;
+  const headers = { Authorization: 'Bearer ' + token, 'Content-Type': 'application/json' };
+
+  // Check of item al bestaat
+  try {
+    const r = await fetch(`${base}?$filter=fields/Title eq '${title}'&$select=id`, { headers });
+    const d = await r.json();
+    if (d.value && d.value.length > 0) {
+      // Update bestaand item
+      await fetch(`${base}/${d.value[0].id}`, {
+        method: 'PATCH', headers,
+        body: JSON.stringify({ fields: { CalData: calData } })
+      });
+    } else {
+      // Nieuw item aanmaken
+      await fetch(base, {
+        method: 'POST', headers,
+        body: JSON.stringify({ fields: { Title: title, Email: email, Jaar: yr, Maand: mo+1, CalData: calData } })
+      });
+    }
+  } catch(e) { console.warn('saveFietskalender fout:', e); }
+}
+
+async function loadFietskalender(yr, mo) {
+  const token = await getToken(); if (!token || !S.user) return;
+  const email = S.user.email;
+  const title = `${email}-${yr}-${String(mo+1).padStart(2,'0')}`;
+  const base = `https://graph.microsoft.com/v1.0/sites/${CONFIG.siteId}/lists/${CONFIG.lijstIds.fietskalender}/items`;
+  const headers = { Authorization: 'Bearer ' + token };
+
+  try {
+    const r = await fetch(`${base}?$filter=fields/Title eq '${title}'&$expand=fields`, { headers });
+    const d = await r.json();
+    if (!d.value || !d.value.length) return;
+    const calData = JSON.parse(d.value[0].fields.CalData || '{}');
+
+    // Herstel biked
+    if (calData.biked) {
+      for (const t of S.trajecten) {
+        const k = mk(t.id, yr, mo);
+        S.biked[k] = new Set(calData.biked[t.id] || []);
+      }
+    }
+    // Herstel leave
+    if (calData.leave && calData.leave.length) {
+      S.leave[lk(yr, mo)] = new Set(calData.leave);
+    }
+  } catch(e) { console.warn('loadFietskalender fout:', e); }
+}
 async function saveProfiel(email, data){
   // Sla profiel op in SharePoint (upsert)
   if(!CONFIG.lijstIds.profielen || CONFIG.lijstIds.profielen.startsWith('GUID')){
@@ -969,6 +1033,7 @@ function toggleBiked(d){
   const k=mk(S.curTrajId,S.calYr,S.calMo);
   if(!S.biked[k])S.biked[k]=new Set();
   S.biked[k].has(d)?S.biked[k].delete(d):S.biked[k].add(d);
+  saveFietskalender(S.calYr, S.calMo);
   buildCal();
 }
 
@@ -978,6 +1043,7 @@ function toggleLeave(d){
   for(const t of S.trajecten){const bk=mk(t.id,S.calYr,S.calMo);if(S.biked[bk]&&S.biked[bk].has(d)){S.biked[bk].delete(d);removed=true;}}
   S.leave[k].has(d)?S.leave[k].delete(d):S.leave[k].add(d);
   if(removed)notify('Fietsdag verwijderd — dag als verlof gemarkeerd');
+  saveFietskalender(S.calYr, S.calMo);
   buildCal();
 }
 
@@ -999,6 +1065,7 @@ function calNav(d){
   if(S.calMo<0){S.calMo=11;S.calYr--;}
   for(const t of S.trajecten){const k=mk(t.id,S.calYr,S.calMo);if(!S.biked[k])S.biked[k]=new Set();}
   const lkk=lk(S.calYr,S.calMo);if(!S.leave[lkk])S.leave[lkk]=new Set();
+  loadFietskalender(S.calYr, S.calMo).then(()=>loadCalData(S.calYr,S.calMo));
   renderFietsStap1();
 }
 
