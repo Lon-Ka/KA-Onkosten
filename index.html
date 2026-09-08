@@ -687,8 +687,13 @@ async function boot(){
   try{
     await msalApp.initialize();
     const r=await msalApp.handleRedirectPromise();
+    // Portaal token bridge — wacht max 2s als we in iframe zitten
+    if (window.self !== window.top && !window._portalToken) {
+      await new Promise(r => setTimeout(r, 2000));
+    }
+
     const accounts=msalApp.getAllAccounts();
-    if(!accounts.length){
+    if(!accounts.length && !window._portalToken){
       if(window.self !== window.top){
         showError('Geen actieve sessie gevonden. Meld aan via het MijnDigiKAntoor portaal en open de app opnieuw.');
         return;
@@ -715,10 +720,12 @@ async function boot(){
 
     // Meerdere rollen? Toon rolkiezer. Anders direct doorgaan.
     if(gebruikers.length>1){
+      window._appBooted = true;
       showRolKiezer(gebruikers,me);
       return;
     }
     activeerRol(gebruikers[0],me);
+  window._appBooted = true;
   }catch(e){
     console.error(e);
     showError(e.message);
