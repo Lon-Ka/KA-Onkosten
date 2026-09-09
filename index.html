@@ -312,12 +312,17 @@ if (window.self === window.top) {
 window._portalToken = null;
 window._portalEmail = '';
 window._appBooted = false;
+window._portalTokenResolve = null;
+window._portalTokenPromise = new Promise(function(resolve) {
+  window._portalTokenResolve = resolve;
+});
 window.addEventListener('message', function(event) {
   if (event.origin !== 'https://lon-ka.github.io') return;
   if (!event.data || event.data.type !== 'MSAL_TOKEN') return;
   if (window._portalToken) return;
   window._portalToken = event.data.token;
   window._portalEmail = event.data.email || '';
+  if (window._portalTokenResolve) { window._portalTokenResolve(event.data.token); window._portalTokenResolve = null; }
   if (!window._appBooted) boot();
 });
 </script>
@@ -447,12 +452,12 @@ const msalApp = new msal.PublicClientApplication({
 const SCOPES=['User.Read','Sites.ReadWrite.All'];
 
 async function getToken(){
-  // Wacht max 3s op portalToken als we in iframe zitten
+  // Wacht op portalToken via Promise (max 5s timeout)
   if(window.self !== window.top && !window._portalToken) {
-    for(let i=0; i<6; i++) {
-      await new Promise(r=>setTimeout(r,500));
-      if(window._portalToken) break;
-    }
+    await Promise.race([
+      window._portalTokenPromise,
+      new Promise(r=>setTimeout(r,5000))
+    ]);
   }
   if(window._portalToken) return window._portalToken;
   const accounts=msalApp.getAllAccounts();
