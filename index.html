@@ -447,6 +447,13 @@ const msalApp = new msal.PublicClientApplication({
 const SCOPES=['User.Read','Sites.ReadWrite.All'];
 
 async function getToken(){
+  // Wacht max 3s op portalToken als we in iframe zitten
+  if(window.self !== window.top && !window._portalToken) {
+    for(let i=0; i<6; i++) {
+      await new Promise(r=>setTimeout(r,500));
+      if(window._portalToken) break;
+    }
+  }
   if(window._portalToken) return window._portalToken;
   const accounts=msalApp.getAllAccounts();
   if(!accounts.length)return null;
