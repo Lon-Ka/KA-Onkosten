@@ -1667,7 +1667,7 @@ function renderSecAanvragen(){
   document.getElementById('mainContent').innerHTML=`
     <div class="card">
       <div class="ct"><div class="ct-l" style="color:var(--a3)"><i class="ti ti-inbox" style="color:var(--a3)"></i>Aanvragen</div>
-        <span style="font-size:12px;color:#888">${goedgekeurd.length} goed te keuren &nbsp;·&nbsp; ${verwerkt.length} verwerkt</span>
+        <span style="font-size:12px;color:#888">${goedgekeurd.length} te verwerken &nbsp;·&nbsp; ${verwerkt.length} verwerkt</span>
       </div>
       ${html||'<div class="empty-state"><i class="ti ti-inbox"></i>Geen aanvragen beschikbaar</div>'}
     </div>`;
@@ -1709,13 +1709,13 @@ function autoStats(a){
 
 function renderSecOverzicht(){
   const filtered=S.aanvragen.filter(a=>{
-    if(a.AanvraagStatus==='ingediend')return false;
+    if(a.AanvraagStatus!=='goedgekeurd'&&a.AanvraagStatus!=='verwerkt')return false;
     if(S.fMaand){const[m,y]=S.fMaand.split('-');if(parseInt(m)!==a.Maand||parseInt(y)!==a.Jaar)return false;}
     if(S.fType&&a.AanvraagType!==S.fType)return false;
     return true;
   });
 
-  const maanden=new Set(S.aanvragen.filter(a=>a.AanvraagStatus!=='ingediend').map(a=>`${a.Maand}-${a.Jaar}`));
+  const maanden=new Set(S.aanvragen.filter(a=>a.AanvraagStatus==='goedgekeurd'||a.AanvraagStatus==='verwerkt').map(a=>`${a.Maand}-${a.Jaar}`));
   const maandOpts=[...maanden].sort((a,b)=>{const[m1,y1]=a.split('-');const[m2,y2]=b.split('-');return(+y1-+y2)||(+m1-+m2);}).map(k=>{const[m,y]=k.split('-');return`<option value="${k}"${S.fMaand===k?' selected':''}>${MND[parseInt(m)-1]} ${y}</option>`;}).join('');
 
   const byType={fiets:[],ov:[],auto:[]};
@@ -1788,7 +1788,7 @@ window.refresh=async function(){
 // PDF export secretariaat
 async function downloadOverviewPdf(){
   const filtered=S.aanvragen.filter(a=>{
-    if(a.AanvraagStatus==='ingediend')return false;
+    if(a.AanvraagStatus!=='goedgekeurd'&&a.AanvraagStatus!=='verwerkt')return false;
     if(S.fMaand){const[m,y]=S.fMaand.split('-');if(parseInt(m)!==a.Maand||parseInt(y)!==a.Jaar)return false;}
     if(S.fType&&a.AanvraagType!==S.fType)return false;
     return true;
@@ -1814,12 +1814,12 @@ async function downloadOverviewPdf(){
     <table style="width:100%;border-collapse:collapse"><thead><tr style="background:#F5F5F0"><th style="text-align:left;padding:8px;border-bottom:2px solid #DDD;font-size:11px;color:#888;text-transform:uppercase">Naam</th><th style="text-align:left;padding:8px;border-bottom:2px solid #DDD;font-size:11px;color:#888;text-transform:uppercase">Stamboeknr.</th><th style="text-align:left;padding:8px;border-bottom:2px solid #DDD;font-size:11px;color:#888;text-transform:uppercase">Details</th><th style="text-align:right;padding:8px;border-bottom:2px solid #DDD;font-size:11px;color:#888;text-transform:uppercase">Bedrag</th></tr></thead><tbody>${rows}</tbody><tfoot><tr style="background:#FEF3E8;font-weight:700"><td colspan="3" style="padding:10px 8px;border-top:2px solid #DDD;color:#7A3200">TOTAAL TE BETALEN</td><td style="text-align:right;padding:10px 8px;border-top:2px solid #DDD;color:#B85000;font-size:16px">${fmtEur(grandTotal)}</td></tr></tfoot></table>
   </div>`;
   const mn=S.fMaand?S.fMaand.replace('-','_'):'alles';
-  await html2pdf().from(htmlStr).set({margin:10,filename:`Maandoverzicht_Lonka_${mn}.pdf`,image:{type:'jpeg',quality:.97},html2canvas:{scale:2,logging:false,scrollX:-window.scrollX,scrollY:-window.scrollY},jsPDF:{unit:'mm',format:'a4',orientation:'portrait'}}).save();
+  await html2pdf().from(htmlStr).set({margin:10,filename:`Maandoverzicht_Lonka_${mn}.pdf`,image:{type:'jpeg',quality:.97},html2canvas:{scale:2,logging:false,scrollX:0,scrollY:0},jsPDF:{unit:'mm',format:'a4',orientation:'portrait'},pagebreak:{mode:['css','legacy'],avoid:'tr'}}).save();
   notify('PDF gedownload ✓');
   // Upload ook naar SharePoint
   const mn_sp=S.fMaand?S.fMaand.replace('-','_'):'alles';
   html2pdf().from(htmlStr).set({margin:10,image:{type:'jpeg',quality:.97},
-    html2canvas:{scale:2,logging:false,scrollX:-window.scrollX,scrollY:-window.scrollY},jsPDF:{unit:'mm',format:'a4',orientation:'portrait'}
+    html2canvas:{scale:2,logging:false,scrollX:0,scrollY:0},jsPDF:{unit:'mm',format:'a4',orientation:'portrait'},pagebreak:{mode:['css','legacy'],avoid:'tr'}
   }).outputPdf('blob').then(blob=>{
     const fn_sp=`Maandoverzicht_${mn_sp}.pdf`;
     uploadAangiftePDF(htmlStr,fn_sp,`Maandoverzichten/${new Date().getFullYear()}`)
@@ -2054,8 +2054,8 @@ async function uploadAangiftePDF(htmlStr, filename, subfolder){
     // Genereer PDF blob
     const blob = await html2pdf().from(htmlStr).set({
       margin:10, image:{type:'jpeg',quality:.92},
-      html2canvas:{scale:2,logging:false,scrollX:-window.scrollX,scrollY:-window.scrollY},
-      jsPDF:{unit:'mm',format:'a4',orientation:'portrait'}
+      html2canvas:{scale:2,logging:false,scrollX:0,scrollY:0},
+      jsPDF:{unit:'mm',format:'a4',orientation:'portrait'},pagebreak:{mode:['css','legacy'],avoid:'tr'}
     }).outputPdf('blob');
 
     // Upload naar SharePoint Document Library
